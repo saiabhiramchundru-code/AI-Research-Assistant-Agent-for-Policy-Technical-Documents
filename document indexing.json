@@ -1,0 +1,706 @@
+{
+  "name": "document indexing",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -3200,
+        -912
+      ],
+      "id": "fe9c4214-f809-45d4-9d52-b5611fdf1107",
+      "name": "Extract from File",
+      "alwaysOutputData": true,
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "newco",
+          "mode": "list",
+          "cachedResultName": "newco"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -1712,
+        -416
+      ],
+      "id": "e73b5fbd-f3f3-493e-b27f-42ec3c6d019e",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "eiW3Zv29fVK307Qu",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1760,
+        -192
+      ],
+      "id": "aa4e6957-38ed-4219-876d-53f8087b6df8",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lndIXKjdCfFdVcOz",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.content }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "document",
+                "value": "={{ $json.metadata.document}}"
+              },
+              {
+                "name": "chunk",
+                "value": "={{ $json.metadata.chunk }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -1536,
+        -192
+      ],
+      "id": "e85e2baa-9bd0-4404-862c-769cedac454b",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\n\n\nconst fileName = $(\"Edit Fields\").first().json.fileName;\n\n// Configuration\nconst chunkSize = 1000;\nconst overlap = 200;\n\nlet chunks = [];\nlet start = 0;\nlet chunkNumber = 1;\n\n// Clean the extracted text\nconst cleanText = text.replace(/\\s+/g, \" \").trim();\n\nwhile (start < cleanText.length) {\n\n    const end = Math.min(start + chunkSize, cleanText.length);\n\n    const chunk = cleanText.substring(start, end);\n\n    chunks.push({\n        json: {\n            id: `${fileName}_${chunkNumber}`,\n            content: chunk,\n            metadata: {\n                document: fileName,\n                chunk: chunkNumber\n            }\n        }\n    });\n\n    start += chunkSize - overlap;\n    chunkNumber++;\n}\n\nreturn chunks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2656,
+        -736
+      ],
+      "id": "838d5c1e-8ef3-4016-a08e-537e9dade26d",
+      "name": "Code in JavaScript",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "batchSize": 25,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2272,
+        -624
+      ],
+      "id": "822dcfa0-099c-4315-b36c-c442052b77f6",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://b90df19b-a13a-46b3-a6dd-a810f32abf4d.sa-east-1-0.aws.cloud.qdrant.io:6333/collections/newco/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"limit\": 1,\n  \"with_payload\": true,\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.document\",\n        \"match\": {\n          \"value\": \"{{ $('Code in JavaScript').first().json.metadata.document }}\"\n        }\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -2256,
+        -1008
+      ],
+      "id": "509a6d20-2841-4164-8e4e-69d68724427c",
+      "name": "HTTP Request",
+      "executeOnce": true,
+      "credentials": {
+        "qdrantApi": {
+          "id": "eiW3Zv29fVK307Qu",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0fdd11df-cd17-4594-96d4-3db21ee3a2d4",
+              "leftValue": "={{$json.result.points.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1952,
+        -1008
+      ],
+      "id": "bf92c496-25ac-42dd-8cee-3885b7c7acaa",
+      "name": "If",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "errorMessage": "Document already exists."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        -1232
+      ],
+      "id": "b3e4d3eb-6b52-48bd-a523-ca1d3013e7b8",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6cbcd864-2fd2-4e6f-9adc-5d3c92498b01",
+              "leftValue": "={{ !$json.text || $json.text.trim().length < 20 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "78e4cb89-8dbe-4f37-8e55-b994df9a0019",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2944,
+        -912
+      ],
+      "id": "67ca1293-5e32-4ca2-85f7-e667c59d3404",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "errorMessage": "blank or Corrupted file or Unsupported File Types"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        -2384,
+        -1200
+      ],
+      "id": "20ce55cc-e98e-4980-a14d-4bb2adf0ae79",
+      "name": "Stop and Error1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\nreturn null;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        -992
+      ],
+      "id": "541b03e5-c8ca-4ef2-b70a-fe2fee841ce9",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Telegram Trigger').item.json.message.document.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -3488,
+        -1136
+      ],
+      "id": "793d7760-a48a-4a58-82ac-2fbf05d4992f",
+      "name": "Get a file",
+      "webhookId": "fe811f10-2030-4023-9879-fdc3584ecc41",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "BpF9gRUgJIthpFFk",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=Upload Failed  The uploaded PDF  {{ $('Telegram Trigger').item.json.message.document.file_name }} is blank or contains no readable Corrupted file or Unsupported File Types text.  Please upload a valid document.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2640,
+        -1200
+      ],
+      "id": "50661730-a17e-4bbd-b48c-59d3346678f3",
+      "name": "Send a text message",
+      "webhookId": "52d30c12-ba57-401b-bbb5-0ed71f237bbd",
+      "credentials": {
+        "telegramApi": {
+          "id": "BpF9gRUgJIthpFFk",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=The file {{ $('Telegram Trigger').item.json.message.document.file_name }} has already been uploaded or have the same name as already uploaded document.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1600,
+        -1232
+      ],
+      "id": "78a87411-5d8f-4dc3-8888-964e81f7dcef",
+      "name": "Send a text message1",
+      "webhookId": "b82dc3c7-eff9-414e-9dae-104bc8471a09",
+      "credentials": {
+        "telegramApi": {
+          "id": "BpF9gRUgJIthpFFk",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aaf10e76-f44e-4768-8fd3-443794f9fab1",
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2cccbf4-c2af-46c9-b5dc-6adf2a7135d1",
+              "name": "fileName",
+              "value": "={{ $json.message.document.file_name}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4064,
+        -912
+      ],
+      "id": "75bccadb-ad8b-44e0-bd1b-4b12cebfa8fd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=The file {{ $('Telegram Trigger').item.json.message.document.file_name }} was uploaded successfully.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1712,
+        -640
+      ],
+      "id": "16fc1031-a0d1-4082-b0bb-c3e104c03794",
+      "name": "Send a text message2",
+      "webhookId": "a63fc83b-cf62-479e-b017-ab481e6406d9",
+      "credentials": {
+        "telegramApi": {
+          "id": "BpF9gRUgJIthpFFk",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -4368,
+        -912
+      ],
+      "id": "bc53235d-b636-47ec-b7d7-d0a52495a1e2",
+      "name": "Telegram Trigger",
+      "webhookId": "9a598970-ac4c-439d-8715-b3cdac06d684",
+      "credentials": {
+        "telegramApi": {
+          "id": "BpF9gRUgJIthpFFk",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "490f807a-0b42-4813-9677-703a2a3952fc",
+              "leftValue": "={{ $json.message.document }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -3760,
+        -912
+      ],
+      "id": "95315f44-3e7a-44d4-b357-2d079697b969",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Y9DgQrkba8t9Tcvh",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Y9DgQrkba8t9Tcvh",
+          "cachedResultName": "AI-chat"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -3504,
+        -736
+      ],
+      "id": "ef74d65e-2fef-4142-b71e-3d40ad4a0496",
+      "name": "Call 'AI-chat'",
+      "retryOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message1": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'AI-chat'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "79478cd2-091c-4f5f-978a-f4c1f8d6c41d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "81c314f2afe74d3689f7a265ae61b636f7376a051e8e30a7914c2ea64b1bc490"
+  },
+  "nodeGroups": [],
+  "id": "8fyacKAAzEz15LJP",
+  "tags": []
+}

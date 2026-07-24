@@ -1,0 +1,110 @@
+{
+  "name": "list all document",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "List Uploaded Documents"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "514eb0c1-3530-4e9e-ad0c-428ce62bb2ae",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://b90df19b-a13a-46b3-a6dd-a810f32abf4d.sa-east-1-0.aws.cloud.qdrant.io:6333/collections/newco/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"limit\": 1000,\n  \"with_payload\": true,\n  \"with_vector\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f4766e60-6fea-4e94-ac5a-cfc305499713",
+      "name": "HTTP Request",
+      "credentials": {
+        "qdrantApi": {
+          "id": "eiW3Zv29fVK307Qu",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const points = $json.result.points;\n\nconst documents = [\n  ...new Set(\n    points\n      .map(p => p.payload?.metadata?.document)\n      .filter(Boolean)\n  )\n];\n\nreturn [\n  {\n    json: {\n      message:\n`Uploaded documents:\n\n${documents.join(\"\\n\")}`\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5370f6ef-c301-479b-9f1e-7243cef79e4c",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "87e0de82-be93-4312-8c50-6e9434392cd0",
+  "meta": {
+    "instanceId": "81c314f2afe74d3689f7a265ae61b636f7376a051e8e30a7914c2ea64b1bc490"
+  },
+  "nodeGroups": [],
+  "id": "nTsf6a7mw86zHTgZ",
+  "tags": []
+}

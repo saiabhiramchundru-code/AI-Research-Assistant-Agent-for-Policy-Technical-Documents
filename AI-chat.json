@@ -1,0 +1,298 @@
+{
+  "name": "AI-chat",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.message.text}}",
+        "options": {
+          "systemMessage": "You are an AI Research Assistant for Policy & Technical Documents.\n\nYou have three tools:\n\n1. Qdrant Vector Store\n- Use it to search and answer questions from the contents of uploaded documents.\n\n2. List Uploaded Documents\n- Use it to retrieve the names of all uploaded documents.\n- Use this tool when the user asks:\n  - List uploaded documents.\n  - Show available PDFs.\n  - Which documents are uploaded?\n  - Is a specific document uploaded?\n  - Check whether a document exists.\n\n3. Conversation Memory\n- Use it to remember the current conversation context.\n\nRules:\n\n1. If the user asks about document contents, always use the Qdrant Vector Store.\n2. If the user asks to list uploaded documents or check whether a document exists, always use the List Uploaded Documents tool.\n3. If the user specifies a document name, search that document first.\n4. If no document name is specified, search across all uploaded documents.\n5. If information is retrieved from multiple documents, combine and compare the results.\n6. If a requested document is not uploaded, reply:\n   \"The requested document is not available in the uploaded collection.\"\n7. If the requested information is not found in the uploaded documents, reply exactly:\n   \"This information is not present in the documents.\"\n8. Never invent facts or generate information that is not supported by the retrieved documents.\n9. Never expose tool calls, JSON, vector IDs, internal reasoning, or implementation details.\n10. Always mention the source document(s) used for the answer.\n11. For questions about uploaded documents, always use the appropriate tool before answering.\n\nFormat every response as:\n\nSummary\n\nKey Points:\n• Point 1\n• Point 2\n\nExplanation:\n...\n\nSource Documents:\n• Document 1\n• Document 2\n\nConclusion:\n...\n\nDo not use Markdown.\nDo not use #, ##, *, _, or backticks."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -320,
+        -400
+      ],
+      "id": "2226ba85-0002-4e23-84fb-6aedba802a10",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -128
+      ],
+      "id": "d087001e-fb22-416e-9737-b0dcbc89c03c",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "j9mCuToMcIEnM638",
+          "name": "OpenRouter account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search and retrieve information from all uploaded PDF documents stored in the Qdrant Vector Database.\n\nUse this tool for every question related to uploaded documents.\n\nCapabilities:\n- Search across all uploaded PDFs.\n- Search within a specific document if the user mentions its name (for example: CS_2026_Syllabus.pdf).\n- Retrieve the most relevant text chunks from the documents.\n- Support summarization, question answering, comparison, and information extraction across one or multiple documents.\n\nAlways use this tool before answering questions about uploaded PDFs.\n\nIf the requested information is not found in the retrieved document chunks, reply:\n\"This information is not present in the documents.\"\n\nNever answer document-related questions from general knowledge when this tool is available.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "newco",
+          "mode": "list",
+          "cachedResultName": "newco"
+        },
+        "topK": 25,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        -128
+      ],
+      "id": "21ec0956-e1cf-4d1c-aadb-09517481f3cf",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "eiW3Zv29fVK307Qu",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        48
+      ],
+      "id": "6d5b0fe5-b306-432a-82d4-9dc1eab5d2c4",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lndIXKjdCfFdVcOz",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -368,
+        -128
+      ],
+      "id": "bf67fb6e-713f-4157-ae16-60b00a988711",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -704,
+        -128
+      ],
+      "id": "57564afb-9db9-4273-9cb2-6f9924cee369",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lndIXKjdCfFdVcOz",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to list all uploaded PDF documents stored in the Qdrant vector database.\n\nUse this tool when the user asks:\n- List all uploaded documents\n- Show uploaded PDFs\n- What documents are available?\n- Which files are uploaded?\n- Display all document names\n- Is a specific PDF uploaded?\n- Check whether a document exists\n\nThe tool returns the uploaded document names.",
+        "workflowId": {
+          "__rl": true,
+          "value": "nTsf6a7mw86zHTgZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/nTsf6a7mw86zHTgZ",
+          "cachedResultName": "list all document"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "List Uploaded Documents": "call"
+          },
+          "matchingColumns": [
+            "List Uploaded Documents"
+          ],
+          "schema": [
+            {
+              "id": "List Uploaded Documents",
+              "displayName": "List Uploaded Documents",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        -128
+      ],
+      "id": "f639daf2-40af-449a-bd1b-4154f8e0e620",
+      "name": "Call 'list all document'"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('When Executed by Another Workflow').item.json.chatId }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        -400
+      ],
+      "id": "7018ba7a-db86-46bd-8729-27fe690ce1df",
+      "name": "Send a text message",
+      "webhookId": "07b29191-eabf-45a5-9b5c-badfd5e5097d",
+      "credentials": {
+        "telegramApi": {
+          "id": "BpF9gRUgJIthpFFk",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -624,
+        -400
+      ],
+      "id": "51c3929c-3766-4a03-bb0a-a53285dc489e",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Call 'list all document'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "55bea861-2c9d-46bf-8d47-82c912eb0e04",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "81c314f2afe74d3689f7a265ae61b636f7376a051e8e30a7914c2ea64b1bc490"
+  },
+  "nodeGroups": [],
+  "id": "Y9DgQrkba8t9Tcvh",
+  "tags": []
+}
