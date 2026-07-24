@@ -116,21 +116,22 @@ Qdrant Vector Database    Qdrant Vector Database
 
 ## Document Indexing Workflow
 
-```
-assets/document-indexing-workflow.png
-```
+
+<img width="1558" height="576" alt="Image" src="https://github.com/user-attachments/assets/d14c7cc2-e683-40f1-81b4-7913fe4ba989" />
+
 
 ## AI Chat Workflow
 
-```
-assets/ai-chat-workflow.png
-```
+
+<img width="984" height="510" alt="Image" src="https://github.com/user-attachments/assets/ce685042-d626-4eac-a476-ff1ee135ed9a" />
+
 
 ## List Documents Workflow
 
-```
-assets/list-documents-workflow.png
-```
+
+<img width="1260" height="348" alt="Image" src="https://github.com/user-attachments/assets/b261c419-df20-4a81-a148-1acb90ea030d" />
+
+
 
 ---
 
@@ -178,8 +179,7 @@ Utility workflow used to retrieve all indexed document names.
 
 ### Features
 
-- Reads vectors from Qdrant
-- Removes duplicate filenames
+- Reads vectors from Qdrant using http request
 - Returns uploaded document list
 
 ---
@@ -261,7 +261,6 @@ Each document is converted into multiple chunks before indexing.
 1. User requests uploaded documents.
 2. AI Agent invokes List Document Workflow.
 3. Workflow retrieves filenames from Qdrant.
-4. Duplicate names are removed.
 5. List is returned.
 
 ---
@@ -296,31 +295,7 @@ The uploaded PDF is blank, corrupted, or unsupported.
 
 ### User Query
 
-```
-What is the objective of the National Education Policy?
-```
-
-### Response
-
-```
-Summary
-
-The National Education Policy aims to improve education quality while promoting flexibility and digital learning.
-
-Key Points
-
-• Improve access to education
-• Promote skill development
-• Encourage technology adoption
-
-Source Documents
-
-• NEP2020.pdf
-
-Conclusion
-
-The policy focuses on creating an inclusive and future-ready education system.
-```
+<img width="1233" height="885" alt="Image" src="https://github.com/user-attachments/assets/72822565-41da-4271-ab73-2989eedf9ff5" />
 
 ---
 
@@ -388,14 +363,9 @@ AI-Research-Assistant-Agent/
 │
 ├── README.md
 │
-├── assets/
-   ├── document-indexing-workflow.png
-   ├── ai-chat-workflow.png
-   ├── list-documents-workflow.png
-   ├── chatbot-demo.png
-   ├── document-indexing.json
-   ├── ai-chat.json
-   └── list-all-document.json
+├── document-indexing.json
+├── ai-chat.json
+└── list-all-document.json
 
 
 ```
